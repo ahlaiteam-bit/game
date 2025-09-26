@@ -19,6 +19,7 @@
             padding: 2rem;
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease-in-out;
+            position: relative;
         }
         .btn {
             display: inline-block;
@@ -88,6 +89,8 @@
 
     <div id="app-container" class="container mx-auto p-4 max-w-4xl hidden">
         <div class="card">
+            <button id="admin-back-btn" class="absolute top-4 left-4 btn btn-secondary hidden">← Back to Dashboard</button>
+
             <h1 id="main-title" class="text-3xl font-bold text-center text-gray-800 mb-2">Team Awards</h1>
             <p id="main-subtitle" class="text-center text-gray-500 mb-8">Select your role to begin</p>
 
@@ -110,11 +113,14 @@
                 <div id="pane-game-controls">
                     <h2 class="text-2xl font-semibold mb-4 text-gray-700">Game Status</h2>
                     <p class="mb-4 text-gray-600">Current Status: <span id="game-status-text" class="font-bold text-indigo-600">Lobby</span></p>
-                    <div id="game-controls" class="flex flex-wrap gap-4">
-                        <button id="start-game-btn" class="btn btn-primary">Start Game</button>
-                        <button id="next-question-btn" class="btn btn-primary hidden">Next Question</button>
-                        <button id="show-results-btn" class="btn btn-secondary hidden">Show Results</button>
-                        <button id="reset-game-btn" class="btn btn-secondary">Reset Game</button>
+                    <div id="game-controls-wrapper">
+                        <div id="game-controls" class="flex flex-wrap gap-4">
+                            <button id="start-game-btn" class="btn btn-primary">Start Game</button>
+                            <button id="next-question-btn" class="btn btn-primary hidden">Next Question</button>
+                            <button id="show-results-btn" class="btn btn-secondary hidden">Show Results</button>
+                            <button id="reset-game-btn" class="btn btn-secondary">Reset & Clear All Data</button>
+                        </div>
+                        <button id="end-game-btn" class="btn btn-primary hidden">End Game & Return to Lobby</button>
                     </div>
                      <div id="admin-question-display" class="mt-8 bg-indigo-50 p-6 rounded-lg hidden">
                         <h3 class="text-xl font-semibold text-gray-800">Current Question:</h3>
@@ -208,11 +214,10 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, deleteDoc, writeBatch, query, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // REGISTER THE CHART PLUGIN
         Chart.register(ChartDataLabels);
 
         // --- GLOBAL CONFIG & STATE ---
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-voting-app';
+        const appId = 'default-voting-app';
         
         const firebaseConfig = {
             apiKey: "AIzaSyCqw3kjeVug3tnGaIwxlHtSF7q4jCs3x_8",
@@ -251,6 +256,7 @@
         const adminBtn = document.getElementById('admin-btn');
         const playerBtn = document.getElementById('player-btn');
         const adminSignOutBtn = document.getElementById('admin-signout-btn');
+        const adminBackBtn = document.getElementById('admin-back-btn'); // NEW
         
         // Modals
         const passwordModal = document.getElementById('password-modal');
@@ -279,10 +285,13 @@
         const addQuestionBtn = document.getElementById('add-question-btn');
         const questionList = document.getElementById('question-list');
         const gameStatusText = document.getElementById('game-status-text');
+        const gameControls = document.getElementById('game-controls');
+        const gameControlsWrapper = document.getElementById('game-controls-wrapper');
         const startGameBtn = document.getElementById('start-game-btn');
         const nextQuestionBtn = document.getElementById('next-question-btn');
         const showResultsBtn = document.getElementById('show-results-btn');
         const resetGameBtn = document.getElementById('reset-game-btn');
+        const endGameBtn = document.getElementById('end-game-btn'); // NEW
         const adminQuestionDisplay = document.getElementById('admin-question-display');
         const currentQuestionTextAdmin = document.getElementById('current-question-text-admin');
         const playerWaitingView = document.getElementById('player-waiting-view');
@@ -357,11 +366,7 @@
 
         async function authenticateUser() {
             try {
-                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    await signInWithCustomToken(auth, __initial_auth_token);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                 await signInAnonymously(auth);
             } catch (error) {
                  console.error("Authentication failed:", error);
                  loadingSpinner.innerHTML = `<p class="text-red-500">Authentication failed. Please refresh.</p>`;
@@ -369,13 +374,13 @@
         }
 
         // --- FIRESTORE REFERENCES ---
-        const getGameStateRef = () => doc(db, `/artifacts/${appId}/public/data/game_state/current`);
-        const getPlayersRef = () => collection(db, `/artifacts/${appId}/public/data/players`);
-        const getQuestionsRef = () => collection(db, `/artifacts/${appId}/public/data/questions`);
-        const getVotesRef = () => collection(db, `/artifacts/${appId}/public/data/votes`);
-        const getPlayerDocRef = (id) => doc(db, `/artifacts/${appId}/public/data/players`, id);
-        const getQuestionDocRef = (id) => doc(db, `/artifacts/${appId}/public/data/questions`, id);
-        const getVoteDocRef = (userId) => doc(db, `/artifacts/${appId}/public/data/votes`, userId);
+        const getGameStateRef = () => doc(db, `artifacts/${appId}/public/data/game_state/current`);
+        const getPlayersRef = () => collection(db, `artifacts/${appId}/public/data/players`);
+        const getQuestionsRef = () => collection(db, `artifacts/${appId}/public/data/questions`);
+        const getVotesRef = () => collection(db, `artifacts/${appId}/public/data/votes`);
+        const getPlayerDocRef = (id) => doc(db, `artifacts/${appId}/public/data/players`, id);
+        const getQuestionDocRef = (id) => doc(db, `artifacts/${appId}/public/data/questions`, id);
+        const getVoteDocRef = (userId) => doc(db, `artifacts/${appId}/public/data/votes`, userId);
         
         // --- UI LOGIC ---
 
@@ -391,6 +396,12 @@
             playerView.classList.add('hidden');
             resultsView.classList.add('hidden');
             if(view) view.classList.remove('hidden');
+
+            if(view === resultsView && getCookie('isAdmin')) {
+                adminBackBtn.classList.remove('hidden');
+            } else {
+                adminBackBtn.classList.add('hidden');
+            }
 
             if(view === adminView) {
                 mainTitle.textContent = 'Admin Dashboard';
@@ -422,9 +433,17 @@
             if (!gameState) return;
             gameStatusText.textContent = gameState.status.charAt(0).toUpperCase() + gameState.status.slice(1).replace('-', ' ');
             
-            startGameBtn.classList.toggle('hidden', gameState.status !== 'lobby');
-            nextQuestionBtn.classList.toggle('hidden', gameState.status !== 'results' && gameState.status !== 'lobby-started');
-            showResultsBtn.classList.toggle('hidden', gameState.status !== 'question');
+            if (gameState.status === 'ended') {
+                gameControls.classList.add('hidden');
+                endGameBtn.classList.remove('hidden');
+            } else {
+                gameControls.classList.remove('hidden');
+                endGameBtn.classList.add('hidden');
+                
+                startGameBtn.classList.toggle('hidden', gameState.status !== 'lobby');
+                nextQuestionBtn.classList.toggle('hidden', gameState.status !== 'results' && gameState.status !== 'lobby-started');
+                showResultsBtn.classList.toggle('hidden', gameState.status !== 'question');
+            }
             
             if(gameState.status === 'lobby-started' && gameState.currentQuestionIndex === -1){
                  nextQuestionBtn.textContent = "Start First Question";
@@ -450,6 +469,8 @@
                 case 'lobby':
                 case 'lobby-started':
                     playerWaitingView.classList.remove('hidden');
+                    playerWaitingView.querySelector('h2').textContent = 'Welcome!';
+                    playerWaitingView.querySelector('p').textContent = 'The game will begin shortly. Get ready to vote!';
                     break;
                 case 'question':
                     const voteDoc = await getDoc(getVoteDocRef(userId));
@@ -463,7 +484,7 @@
                 case 'ended':
                      playerWaitingView.classList.remove('hidden');
                      playerWaitingView.querySelector('h2').textContent = 'Game Over!';
-                     playerWaitingView.querySelector('p').textContent = 'Thanks for playing!';
+                     playerWaitingView.querySelector('p').textContent = 'Thanks for playing! Waiting for admin to start a new game.';
                     break;
             }
         }
@@ -546,7 +567,6 @@
                         borderRadius: 5,
                     }]
                 },
-                // UPDATED CHART OPTIONS
                 options: {
                     indexAxis: 'y',
                     responsive: true,
@@ -586,9 +606,7 @@
             } else {
                  resultsWinnerText.textContent = 'No votes were cast for this question.';
             }
-
         }
-
 
         // --- FIRESTORE LISTENERS ---
         function attachAllListeners() {
@@ -596,22 +614,17 @@
             gameStateUnsubscribe = onSnapshot(getGameStateRef(), (doc) => {
                 let gameState = doc.data();
                 if (!gameState) {
-                    gameState = { status: 'lobby', currentQuestionIndex: -1 };
-                    setDoc(getGameStateRef(), gameState);
-                    return;
+                    return; // Wait for initialization to create the doc
                 }
                 
-                // If the user has not selected a role yet, do not update the view.
-                // Let them make a choice on the role selection screen first.
                 if (!roleSelectionView.classList.contains('hidden')) {
                     return;
                 }
 
-                // THIS ENTIRE IF/ELSE BLOCK IS UPDATED
                 if (getCookie('isAdmin')) {
                     if (gameState.status === 'results') {
                         showView(resultsView);
-                        renderResults(gameState.currentQuestion); // THIS LINE WAS ADDED
+                        renderResults(gameState.currentQuestion);
                     } else {
                         showView(adminView);
                     }
@@ -640,7 +653,17 @@
                 renderQuestionList(questions);
             });
         }
-
+        
+        // NEW: Function to reset the game and clear votes
+        async function resetAndClearGame() {
+            await setDoc(getGameStateRef(), { status: 'lobby', currentQuestionIndex: -1, currentQuestion: null });
+            const votesSnapshot = await getDocs(getVotesRef());
+            const batch = writeBatch(db);
+            votesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            showView(adminView);
+            showMessage('Game Reset', 'A new game has started and all previous votes have been cleared.');
+        }
 
         // --- EVENT HANDLERS ---
         adminBtn.addEventListener('click', () => {
@@ -653,10 +676,14 @@
             window.location.reload();
         });
         
+        adminBackBtn.addEventListener('click', () => { // NEW
+            showView(adminView);
+        });
+
         // Password Modal
         submitPasswordBtn.addEventListener('click', () => {
             if (adminPasswordInput.value === ADMIN_PASSWORD) {
-                setCookie('isAdmin', 'true', 1); // Set cookie for 1 hour
+                setCookie('isAdmin', 'true', 1); 
                 passwordModal.classList.add('hidden');
                 adminPasswordInput.value = '';
                 passwordError.classList.add('hidden');
@@ -729,7 +756,7 @@
                 });
             } else {
                 await setDoc(getGameStateRef(), { status: 'ended' }, { merge: true });
-                showMessage('Game Over', 'You have reached the end of all questions!');
+                showMessage('Game Over', 'You have reached the end of all questions! You can now end the game or view the final results.');
             }
         });
 
@@ -738,14 +765,9 @@
              await setDoc(getGameStateRef(), { ...currentGameState, status: 'results' });
         });
         
-        resetGameBtn.addEventListener('click', async () => {
-             await setDoc(getGameStateRef(), { status: 'lobby', currentQuestionIndex: -1, currentQuestion: null });
-             const votesSnapshot = await getDocs(getVotesRef());
-             const batch = writeBatch(db);
-             votesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-             await batch.commit();
-             showView(adminView);
-        });
+        // UPDATED: Both reset and end game buttons call the same function
+        resetGameBtn.addEventListener('click', resetAndClearGame);
+        endGameBtn.addEventListener('click', resetAndClearGame);
 
         // Player: Submit Vote
         submitVoteBtn.addEventListener('click', async () => {
