@@ -90,7 +90,6 @@
             <h1 id="main-title" class="text-3xl font-bold text-center text-gray-800 mb-2">Team Awards</h1>
             <p id="main-subtitle" class="text-center text-gray-500 mb-8">Select your role to begin</p>
 
-            <!-- Role Selection View -->
             <div id="role-selection-view">
                 <div class="flex flex-col md:flex-row gap-4 justify-center">
                     <button id="admin-btn" class="btn btn-primary w-full md:w-auto">Become Admin</button>
@@ -98,10 +97,8 @@
                 </div>
             </div>
 
-            <!-- Admin View -->
             <div id="admin-view" class="hidden">
-                 <!-- Admin Tabs -->
-                <div class="border-b border-gray-200 mb-6">
+                 <div class="border-b border-gray-200 mb-6">
                     <nav class="-mb-px flex space-x-8" aria-label="Tabs">
                         <button id="tab-game-controls" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">Game Controls</button>
                         <button id="tab-manage-players" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Manage Names</button>
@@ -109,7 +106,6 @@
                     </nav>
                 </div>
 
-                <!-- Admin Content Panes -->
                 <div id="pane-game-controls">
                     <h2 class="text-2xl font-semibold mb-4 text-gray-700">Game Status</h2>
                     <p class="mb-4 text-gray-600">Current Status: <span id="game-status-text" class="font-bold text-indigo-600">Lobby</span></p>
@@ -136,8 +132,7 @@
                     <div>
                         <h3 class="text-xl font-semibold text-gray-700 mb-3">Current Names</h3>
                         <ul id="player-list" class="space-y-2 max-h-60 overflow-y-auto bg-gray-50 p-4 rounded-md">
-                            <!-- Player names will be injected here -->
-                        </ul>
+                            </ul>
                     </div>
                 </div>
 
@@ -152,36 +147,30 @@
                      <div>
                         <h3 class="text-xl font-semibold text-gray-700 mb-3">Question List</h3>
                         <ul id="question-list" class="space-y-2 max-h-60 overflow-y-auto bg-gray-50 p-4 rounded-md">
-                           <!-- Questions will be injected here -->
-                        </ul>
+                           </ul>
                     </div>
                 </div>
                  <button id="admin-signout-btn" class="mt-8 text-indigo-600 hover:text-indigo-800 font-semibold">Sign Out as Admin</button>
             </div>
 
-            <!-- Player View -->
             <div id="player-view" class="hidden text-center">
-                <!-- Waiting Screen -->
                 <div id="player-waiting-view">
                     <h2 class="text-2xl font-semibold text-gray-700">Welcome!</h2>
                     <p class="text-gray-600 mt-2">The game will begin shortly. Get ready to vote!</p>
                 </div>
 
-                <!-- Question Screen -->
                 <div id="player-question-view" class="hidden">
                     <h2 id="player-question-text" class="text-2xl font-semibold text-gray-800 mb-6"></h2>
                     <select id="player-vote-options" class="input-field max-w-xs mx-auto mb-6"></select>
                     <button id="submit-vote-btn" class="btn btn-primary">Submit Vote</button>
                 </div>
 
-                <!-- Post-Vote Screen -->
                 <div id="player-voted-view" class="hidden">
                      <h2 class="text-2xl font-semibold text-gray-700">Vote submitted!</h2>
                     <p class="text-gray-600 mt-2">Waiting for the admin to reveal the results.</p>
                 </div>
             </div>
 
-            <!-- Results View -->
             <div id="results-view" class="hidden text-center">
                  <h2 id="results-question-text" class="text-2xl font-semibold text-gray-800 mb-6"></h2>
                  <div id="resultsChartContainer" class="relative">
@@ -192,7 +181,6 @@
         </div>
     </div>
 
-    <!-- Password Modal -->
     <div id="password-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
         <div class="card w-full max-w-md mx-auto">
             <h2 class="text-2xl font-semibold text-gray-700 mb-4">Admin Access</h2>
@@ -205,7 +193,6 @@
         </div>
     </div>
     
-    <!-- Generic Message Modal -->
     <div id="message-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
         <div class="card w-full max-w-sm mx-auto text-center">
             <h2 id="message-modal-title" class="text-xl font-semibold text-gray-700 mb-4">Message</h2>
@@ -222,7 +209,18 @@
 
         // --- GLOBAL CONFIG & STATE ---
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-voting-app';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        
+        // THIS IS THE CORRECTED PART: Your personal Firebase config is now here.
+        const firebaseConfig = {
+            apiKey: "AIzaSyCqw3kjeVug3tnGaIwxlHtSF7q4jCs3x_8",
+            authDomain: "game-61862.firebaseapp.com",
+            projectId: "game-61862",
+            storageBucket: "game-61862.appspot.com",
+            messagingSenderId: "691249764243",
+            appId: "1:691249764243:web:7ad2c994b3745ff6e77a66",
+            measurementId: "G-053GCNZCQT"
+        };
+        
         const ADMIN_PASSWORD = 'Cookie';
 
         let app;
@@ -583,8 +581,12 @@
                 }
 
                 if (getCookie('isAdmin')) {
-                    if (gameState.status === 'results') showView(resultsView);
-                    else showView(adminView);
+                    if (gameState.status === 'results') {
+                        showView(resultsView);
+                        renderResults(gameState.currentQuestion);
+                    } else {
+                        showView(adminView);
+                    }
                     updateAdminUI(gameState);
                 } else { // Player logic
                     if (gameState.status === 'results') {
@@ -739,6 +741,3 @@
     </script>
 </body>
 </html>
-
-
-
