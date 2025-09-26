@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamified Voting Platform</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+        }
+        .card {
+            background-color: white;
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease-in-out;
+        }
+        .btn {
+            display: inline-block;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: middle;
+            user-select: none;
+            border: 1px solid transparent;
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            border-radius: 0.5rem;
+            transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .btn-primary {
+            color: #fff;
+            background-color: #4f46e5;
+            border-color: #4f46e5;
+        }
+        .btn-primary:hover {
+            background-color: #4338ca;
+            border-color: #3730a3;
+        }
+        .btn-secondary {
+            color: #4f46e5;
+            background-color: #e0e7ff;
+            border-color: transparent;
+        }
+         .btn-secondary:hover {
+            background-color: #c7d2fe;
+        }
+        .input-field {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+            line-height: 1.5;
+            color: #374151;
+            background-color: #f9fafb;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+        }
+        .input-field:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.25);
+        }
+        .hidden {
+            display: none;
+        }
+        #resultsChartContainer {
+            min-height: 400px;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+
+    <div id="loading-spinner" class="text-center">
+        <svg class="animate-spin h-10 w-10 text-indigo-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <p class="mt-2 text-lg font-medium text-gray-700">Connecting to the game...</p>
+    </div>
+
+    <div id="app-container" class="container mx-auto p-4 max-w-4xl hidden">
+        <div class="card">
+            <h1 id="main-title" class="text-3xl font-bold text-center text-gray-800 mb-2">Team Awards</h1>
+            <p id="main-subtitle" class="text-center text-gray-500 mb-8">Select your role to begin</p>
+
+            <!-- Role Selection View -->
+            <div id="role-selection-view">
+                <div class="flex flex-col md:flex-row gap-4 justify-center">
+                    <button id="admin-btn" class="btn btn-primary w-full md:w-auto">Become Admin</button>
+                    <button id="player-btn" class="btn btn-secondary w-full md:w-auto">Join as Player</button>
+                </div>
+            </div>
+
+            <!-- Admin View -->
+            <div id="admin-view" class="hidden">
+                 <!-- Admin Tabs -->
+                <div class="border-b border-gray-200 mb-6">
+                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button id="tab-game-controls" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-indigo-500 text-indigo-600">Game Controls</button>
+                        <button id="tab-manage-players" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Manage Names</button>
+                        <button id="tab-manage-questions" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300">Manage Questions</button>
+                    </nav>
+                </div>
+
+                <!-- Admin Content Panes -->
+                <div id="pane-game-controls">
+                    <h2 class="text-2xl font-semibold mb-4 text-gray-700">Game Status</h2>
+                    <p class="mb-4 text-gray-600">Current Status: <span id="game-status-text" class="font-bold text-indigo-600">Lobby</span></p>
+                    <div id="game-controls" class="flex flex-wrap gap-4">
+                        <button id="start-game-btn" class="btn btn-primary">Start Game</button>
+                        <button id="next-question-btn" class="btn btn-primary hidden">Next Question</button>
+                        <button id="show-results-btn" class="btn btn-secondary hidden">Show Results</button>
+                        <button id="reset-game-btn" class="btn btn-secondary">Reset Game</button>
+                    </div>
+                     <div id="admin-question-display" class="mt-8 bg-indigo-50 p-6 rounded-lg hidden">
+                        <h3 class="text-xl font-semibold text-gray-800">Current Question:</h3>
+                        <p id="current-question-text-admin" class="text-gray-600 text-lg mt-2"></p>
+                    </div>
+                </div>
+
+                <div id="pane-manage-players" class="hidden">
+                     <div class="mb-6">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-3">Add New Name</h3>
+                        <div class="flex gap-2">
+                            <input type="text" id="new-player-name" class="input-field flex-grow" placeholder="Enter name">
+                            <button id="add-player-btn" class="btn btn-primary">Add</button>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-3">Current Names</h3>
+                        <ul id="player-list" class="space-y-2 max-h-60 overflow-y-auto bg-gray-50 p-4 rounded-md">
+                            <!-- Player names will be injected here -->
+                        </ul>
+                    </div>
+                </div>
+
+                <div id="pane-manage-questions" class="hidden">
+                    <div class="mb-6">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-3">Add New Question</h3>
+                        <div class="space-y-4">
+                            <input type="text" id="new-question-text" class="input-field" placeholder="e.g., Who is the most helpful?">
+                            <button id="add-question-btn" class="btn btn-primary">Add Question</button>
+                        </div>
+                    </div>
+                     <div>
+                        <h3 class="text-xl font-semibold text-gray-700 mb-3">Question List</h3>
+                        <ul id="question-list" class="space-y-2 max-h-60 overflow-y-auto bg-gray-50 p-4 rounded-md">
+                           <!-- Questions will be injected here -->
+                        </ul>
+                    </div>
+                </div>
+                 <button id="admin-signout-btn" class="mt-8 text-indigo-600 hover:text-indigo-800 font-semibold">Sign Out as Admin</button>
+            </div>
+
+            <!-- Player View -->
+            <div id="player-view" class="hidden text-center">
+                <!-- Waiting Screen -->
+                <div id="player-waiting-view">
+                    <h2 class="text-2xl font-semibold text-gray-700">Welcome!</h2>
+                    <p class="text-gray-600 mt-2">The game will begin shortly. Get ready to vote!</p>
+                </div>
+
+                <!-- Question Screen -->
+                <div id="player-question-view" class="hidden">
+                    <h2 id="player-question-text" class="text-2xl font-semibold text-gray-800 mb-6"></h2>
+                    <select id="player-vote-options" class="input-field max-w-xs mx-auto mb-6"></select>
+                    <button id="submit-vote-btn" class="btn btn-primary">Submit Vote</button>
+                </div>
+
+                <!-- Post-Vote Screen -->
+                <div id="player-voted-view" class="hidden">
+                     <h2 class="text-2xl font-semibold text-gray-700">Vote submitted!</h2>
+                    <p class="text-gray-600 mt-2">Waiting for the admin to reveal the results.</p>
+                </div>
+            </div>
+
+            <!-- Results View -->
+            <div id="results-view" class="hidden text-center">
+                 <h2 id="results-question-text" class="text-2xl font-semibold text-gray-800 mb-6"></h2>
+                 <div id="resultsChartContainer" class="relative">
+                    <canvas id="resultsChart"></canvas>
+                 </div>
+                 <p id="results-winner-text" class="text-xl font-bold text-indigo-600 mt-6"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Password Modal -->
+    <div id="password-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+        <div class="card w-full max-w-md mx-auto">
+            <h2 class="text-2xl font-semibold text-gray-700 mb-4">Admin Access</h2>
+            <p id="password-error" class="text-red-500 mb-4 hidden">Incorrect password. Please try again.</p>
+            <input type="password" id="admin-password-input" class="input-field mb-4" placeholder="Enter admin password">
+            <div class="flex justify-end gap-4">
+                <button id="cancel-password-btn" class="btn btn-secondary">Cancel</button>
+                <button id="submit-password-btn" class="btn btn-primary">Login</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Generic Message Modal -->
+    <div id="message-modal" class="hidden fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center z-50">
+        <div class="card w-full max-w-sm mx-auto text-center">
+            <h2 id="message-modal-title" class="text-xl font-semibold text-gray-700 mb-4">Message</h2>
+            <p id="message-modal-text" class="text-gray-600 mb-6"></p>
+            <button id="message-modal-close-btn" class="btn btn-primary">OK</button>
+        </div>
+    </div>
+
+    <script type="module">
+        // Firebase Imports
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot, collection, addDoc, deleteDoc, writeBatch, query, getDocs, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- GLOBAL CONFIG & STATE ---
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-voting-app';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const ADMIN_PASSWORD = 'Cookie';
+
+        let app;
+        let auth;
+        let db;
+        let userId;
+
+        let gameStateUnsubscribe = null;
+        let playersUnsubscribe = null;
+        let questionsUnsubscribe = null;
+
+        let myChart = null;
+
+        // --- UI ELEMENT REFERENCES ---
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const appContainer = document.getElementById('app-container');
+        const mainTitle = document.getElementById('main-title');
+        const mainSubtitle = document.getElementById('main-subtitle');
+
+        const roleSelectionView = document.getElementById('role-selection-view');
+        const adminView = document.getElementById('admin-view');
+        const playerView = document.getElementById('player-view');
+        const resultsView = document.getElementById('results-view');
+
+        const adminBtn = document.getElementById('admin-btn');
+        const playerBtn = document.getElementById('player-btn');
+        const adminSignOutBtn = document.getElementById('admin-signout-btn');
+        
+        // Modals
+        const passwordModal = document.getElementById('password-modal');
+        const adminPasswordInput = document.getElementById('admin-password-input');
+        const submitPasswordBtn = document.getElementById('submit-password-btn');
+        const cancelPasswordBtn = document.getElementById('cancel-password-btn');
+        const passwordError = document.getElementById('password-error');
+        const messageModal = document.getElementById('message-modal');
+        const messageModalCloseBtn = document.getElementById('message-modal-close-btn');
+
+        // ... (rest of UI elements)
+        const tabs = {
+            gameControls: document.getElementById('tab-game-controls'),
+            managePlayers: document.getElementById('tab-manage-players'),
+            manageQuestions: document.getElementById('tab-manage-questions'),
+        };
+        const panes = {
+            gameControls: document.getElementById('pane-game-controls'),
+            managePlayers: document.getElementById('pane-manage-players'),
+            manageQuestions: document.getElementById('pane-manage-questions'),
+        };
+        const newPlayerNameInput = document.getElementById('new-player-name');
+        const addPlayerBtn = document.getElementById('add-player-btn');
+        const playerList = document.getElementById('player-list');
+        const newQuestionTextInput = document.getElementById('new-question-text');
+        const addQuestionBtn = document.getElementById('add-question-btn');
+        const questionList = document.getElementById('question-list');
+        const gameStatusText = document.getElementById('game-status-text');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const nextQuestionBtn = document.getElementById('next-question-btn');
+        const showResultsBtn = document.getElementById('show-results-btn');
+        const resetGameBtn = document.getElementById('reset-game-btn');
+        const adminQuestionDisplay = document.getElementById('admin-question-display');
+        const currentQuestionTextAdmin = document.getElementById('current-question-text-admin');
+        const playerWaitingView = document.getElementById('player-waiting-view');
+        const playerQuestionView = document.getElementById('player-question-view');
+        const playerVotedView = document.getElementById('player-voted-view');
+        const playerQuestionText = document.getElementById('player-question-text');
+        const playerVoteOptions = document.getElementById('player-vote-options');
+        const submitVoteBtn = document.getElementById('submit-vote-btn');
+        const resultsQuestionText = document.getElementById('results-question-text');
+        const resultsChartContainer = document.getElementById('resultsChartContainer');
+        const resultsChartCanvas = document.getElementById('resultsChart');
+        const resultsWinnerText = document.getElementById('results-winner-text');
+
+        // --- COOKIE HELPERS ---
+        function setCookie(name, value, hours) {
+            let expires = "";
+            if (hours) {
+                const date = new Date();
+                date.setTime(date.getTime() + (hours * 60 * 60 * 1000));
+                expires = "; expires=" + date.toUTCString();
+            }
+            document.cookie = name + "=" + (value || "")  + expires + "; path=/";
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for(let i=0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0)==' ') c = c.substring(1,c.length);
+                if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length,c.length);
+            }
+            return null;
+        }
+
+        function deleteCookie(name) {
+            document.cookie = name +'=; Path=/; Expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+        }
+
+        // --- FIREBASE SETUP & AUTHENTICATION ---
+        async function initializeFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+                
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        console.log("User authenticated with UID:", userId);
+                        loadingSpinner.classList.add('hidden');
+                        appContainer.classList.remove('hidden');
+
+                        if (getCookie('isAdmin')) {
+                            showView(adminView);
+                        } else {
+                            showView(roleSelectionView);
+                        }
+
+                        attachAllListeners();
+                    } else {
+                         console.log("No user signed in. Trying to sign in.");
+                         await authenticateUser();
+                    }
+                });
+
+            } catch (error) {
+                console.error("Firebase initialization failed:", error);
+                loadingSpinner.innerHTML = `<p class="text-red-500">Error connecting to the service. Please refresh.</p>`;
+            }
+        }
+
+        async function authenticateUser() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                 console.error("Authentication failed:", error);
+                 loadingSpinner.innerHTML = `<p class="text-red-500">Authentication failed. Please refresh.</p>`;
+            }
+        }
+
+        // --- FIRESTORE REFERENCES ---
+        const getGameStateRef = () => doc(db, `/artifacts/${appId}/public/data/game_state/current`);
+        const getPlayersRef = () => collection(db, `/artifacts/${appId}/public/data/players`);
+        const getQuestionsRef = () => collection(db, `/artifacts/${appId}/public/data/questions`);
+        const getVotesRef = () => collection(db, `/artifacts/${appId}/public/data/votes`);
+        const getPlayerDocRef = (id) => doc(db, `/artifacts/${appId}/public/data/players`, id);
+        const getQuestionDocRef = (id) => doc(db, `/artifacts/${appId}/public/data/questions`, id);
+        const getVoteDocRef = (userId) => doc(db, `/artifacts/${appId}/public/data/votes`, userId);
+        
+        // --- UI LOGIC ---
+
+        function showMessage(title, text) {
+            document.getElementById('message-modal-title').textContent = title;
+            document.getElementById('message-modal-text').textContent = text;
+            messageModal.classList.remove('hidden');
+        }
+
+        function showView(view) {
+            roleSelectionView.classList.add('hidden');
+            adminView.classList.add('hidden');
+            playerView.classList.add('hidden');
+            resultsView.classList.add('hidden');
+            if(view) view.classList.remove('hidden');
+
+            if(view === adminView) {
+                mainTitle.textContent = 'Admin Dashboard';
+                mainSubtitle.textContent = 'Manage the game, names, and questions.';
+            } else if (view === playerView || view === resultsView) {
+                 mainTitle.textContent = 'Team Awards';
+                 mainSubtitle.textContent = 'Cast your vote!';
+            } else {
+                 mainTitle.textContent = 'Team Awards';
+                 mainSubtitle.textContent = 'Select your role to begin';
+            }
+        }
+
+        function switchAdminTab(targetTab) {
+            Object.values(tabs).forEach(tab => {
+                tab.classList.remove('border-indigo-500', 'text-indigo-600');
+                tab.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+            });
+            Object.values(panes).forEach(pane => pane.classList.add('hidden'));
+
+            targetTab.classList.add('border-indigo-500', 'text-indigo-600');
+            targetTab.classList.remove('border-transparent', 'text-gray-500');
+            
+            const paneId = `pane-${targetTab.id.split('-')[1]}-${targetTab.id.split('-')[2]}`;
+            document.getElementById(paneId).classList.remove('hidden');
+        }
+
+        function updateAdminUI(gameState) {
+            if (!gameState) return;
+            gameStatusText.textContent = gameState.status.charAt(0).toUpperCase() + gameState.status.slice(1).replace('-', ' ');
+            
+            startGameBtn.classList.toggle('hidden', gameState.status !== 'lobby');
+            nextQuestionBtn.classList.toggle('hidden', gameState.status !== 'results' && gameState.status !== 'lobby-started');
+            showResultsBtn.classList.toggle('hidden', gameState.status !== 'question');
+            
+            if(gameState.status === 'lobby-started' && gameState.currentQuestionIndex === -1){
+                 nextQuestionBtn.textContent = "Start First Question";
+            } else {
+                 nextQuestionBtn.textContent = "Next Question";
+            }
+
+            if(gameState.currentQuestion) {
+                adminQuestionDisplay.classList.remove('hidden');
+                currentQuestionTextAdmin.textContent = gameState.currentQuestion.text;
+            } else {
+                adminQuestionDisplay.classList.add('hidden');
+            }
+        }
+
+        async function updatePlayerUI(gameState) {
+            if (!gameState) return;
+            playerWaitingView.classList.add('hidden');
+            playerQuestionView.classList.add('hidden');
+            playerVotedView.classList.add('hidden');
+
+            switch (gameState.status) {
+                case 'lobby':
+                case 'lobby-started':
+                    playerWaitingView.classList.remove('hidden');
+                    break;
+                case 'question':
+                    const voteDoc = await getDoc(getVoteDocRef(userId));
+                     if (voteDoc.exists() && voteDoc.data().questionId === gameState.currentQuestion.id) {
+                         playerVotedView.classList.remove('hidden');
+                     } else {
+                        playerQuestionText.textContent = gameState.currentQuestion.text;
+                        playerQuestionView.classList.remove('hidden');
+                     }
+                    break;
+                case 'ended':
+                     playerWaitingView.classList.remove('hidden');
+                     playerWaitingView.querySelector('h2').textContent = 'Game Over!';
+                     playerWaitingView.querySelector('p').textContent = 'Thanks for playing!';
+                    break;
+            }
+        }
+        
+        // --- DATA RENDERING ---
+
+        function renderPlayerList(players) {
+            playerList.innerHTML = '';
+            if (players.length === 0) {
+                 playerList.innerHTML = `<li class="text-gray-500">No names added yet.</li>`;
+                 return;
+            }
+            players.forEach(player => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-white p-2 rounded';
+                li.innerHTML = `
+                    <span class="text-gray-800">${player.name}</span>
+                    <button data-id="${player.id}" class="remove-player-btn text-red-500 hover:text-red-700 font-semibold text-xs">REMOVE</button>
+                `;
+                playerList.appendChild(li);
+            });
+        }
+        
+        function renderQuestionList(questions) {
+            questionList.innerHTML = '';
+            if (questions.length === 0) {
+                 questionList.innerHTML = `<li class="text-gray-500">No questions added yet.</li>`;
+                 return;
+            }
+            questions.forEach(q => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center bg-white p-2 rounded';
+                li.innerHTML = `
+                    <span class="text-gray-800">${q.text}</span>
+                    <button data-id="${q.id}" class="remove-question-btn text-red-500 hover:text-red-700 font-semibold text-xs">REMOVE</button>
+                `;
+                questionList.appendChild(li);
+            });
+        }
+        
+        function populateVoteOptions(players) {
+            playerVoteOptions.innerHTML = '<option value="">Select a name...</option>';
+            players.forEach(player => {
+                const option = document.createElement('option');
+                option.value = player.name;
+                option.textContent = player.name;
+                playerVoteOptions.appendChild(option);
+            });
+        }
+        
+        async function renderResults(question) {
+            if (!question) return;
+            resultsQuestionText.textContent = question.text;
+            
+            const votesSnapshot = await getDocs(query(getVotesRef(), where("questionId", "==", question.id)));
+            const voteCounts = {};
+            votesSnapshot.forEach(doc => {
+                const vote = doc.data();
+                voteCounts[vote.votedFor] = (voteCounts[vote.votedFor] || 0) + 1;
+            });
+
+            const sortedVotes = Object.entries(voteCounts).sort(([,a],[,b]) => b-a);
+            
+            const labels = sortedVotes.map(item => item[0]);
+            const data = sortedVotes.map(item => item[1]);
+
+            if (myChart) myChart.destroy();
+
+            const ctx = resultsChartCanvas.getContext('2d');
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Votes',
+                        data: data,
+                        backgroundColor: 'rgba(79, 70, 229, 0.8)',
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 1,
+                        borderRadius: 5,
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } },
+                    plugins: { legend: { display: false }, title: { display: true, text: 'Vote Results' } }
+                }
+            });
+
+            if(sortedVotes.length > 0) {
+                const winnerName = sortedVotes[0][0];
+                const winnerVotes = sortedVotes[0][1];
+                resultsWinnerText.textContent = `Winner: ${winnerName} with ${winnerVotes} vote(s)!`;
+            } else {
+                 resultsWinnerText.textContent = 'No votes were cast for this question.';
+            }
+
+        }
+
+
+        // --- FIRESTORE LISTENERS ---
+        function attachAllListeners() {
+            if (gameStateUnsubscribe) gameStateUnsubscribe();
+            gameStateUnsubscribe = onSnapshot(getGameStateRef(), (doc) => {
+                let gameState = doc.data();
+                if (!gameState) {
+                    gameState = { status: 'lobby', currentQuestionIndex: -1 };
+                    setDoc(getGameStateRef(), gameState);
+                    return;
+                }
+                
+                // If the user has not selected a role yet, do not update the view.
+                // Let them make a choice on the role selection screen first.
+                if (!roleSelectionView.classList.contains('hidden')) {
+                    return;
+                }
+
+                if (getCookie('isAdmin')) {
+                    if (gameState.status === 'results') showView(resultsView);
+                    else showView(adminView);
+                    updateAdminUI(gameState);
+                } else { // Player logic
+                    if (gameState.status === 'results') {
+                         showView(resultsView);
+                         renderResults(gameState.currentQuestion);
+                    } else {
+                         showView(playerView);
+                         updatePlayerUI(gameState);
+                    }
+                }
+            });
+            
+            if (playersUnsubscribe) playersUnsubscribe();
+            playersUnsubscribe = onSnapshot(getPlayersRef(), (snapshot) => {
+                const players = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderPlayerList(players);
+                populateVoteOptions(players);
+            });
+
+            if (questionsUnsubscribe) questionsUnsubscribe();
+            questionsUnsubscribe = onSnapshot(getQuestionsRef(), (snapshot) => {
+                const questions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderQuestionList(questions);
+            });
+        }
+
+
+        // --- EVENT HANDLERS ---
+        adminBtn.addEventListener('click', () => {
+            passwordModal.classList.remove('hidden');
+            adminPasswordInput.focus();
+        });
+        playerBtn.addEventListener('click', () => showView(playerView));
+        adminSignOutBtn.addEventListener('click', () => {
+            deleteCookie('isAdmin');
+            window.location.reload();
+        });
+        
+        // Password Modal
+        submitPasswordBtn.addEventListener('click', () => {
+            if (adminPasswordInput.value === ADMIN_PASSWORD) {
+                setCookie('isAdmin', 'true', 1); // Set cookie for 1 hour
+                passwordModal.classList.add('hidden');
+                adminPasswordInput.value = '';
+                passwordError.classList.add('hidden');
+                showView(adminView);
+            } else {
+                passwordError.classList.remove('hidden');
+            }
+        });
+        cancelPasswordBtn.addEventListener('click', () => {
+             passwordModal.classList.add('hidden');
+             adminPasswordInput.value = '';
+             passwordError.classList.add('hidden');
+        });
+        adminPasswordInput.addEventListener('keyup', (e) => {
+            if (e.key === 'Enter') submitPasswordBtn.click();
+        });
+        
+        // Message Modal
+        messageModalCloseBtn.addEventListener('click', () => {
+            messageModal.classList.add('hidden');
+        });
+
+        // Admin: Tab switching
+        Object.values(tabs).forEach(tab => {
+            tab.addEventListener('click', () => switchAdminTab(tab));
+        });
+
+        // Admin: Add/Remove
+        addPlayerBtn.addEventListener('click', async () => {
+            const name = newPlayerNameInput.value.trim();
+            if (name) {
+                await addDoc(getPlayersRef(), { name: name });
+                newPlayerNameInput.value = '';
+            }
+        });
+        playerList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('remove-player-btn')) {
+                await deleteDoc(getPlayerDocRef(e.target.dataset.id));
+            }
+        });
+        addQuestionBtn.addEventListener('click', async () => {
+            const text = newQuestionTextInput.value.trim();
+            if (text) {
+                await addDoc(getQuestionsRef(), { text: text });
+                newQuestionTextInput.value = '';
+            }
+        });
+        questionList.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('remove-question-btn')) {
+                await deleteDoc(getQuestionDocRef(e.target.dataset.id));
+            }
+        });
+
+        // Admin: Game Controls
+        startGameBtn.addEventListener('click', async () => {
+             await setDoc(getGameStateRef(), { status: 'lobby-started', currentQuestionIndex: -1 }, { merge: true });
+        });
+
+        nextQuestionBtn.addEventListener('click', async () => {
+            const currentGameState = (await getDoc(getGameStateRef())).data();
+            const questionsSnapshot = await getDocs(getQuestionsRef());
+            const questions = questionsSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+            const nextIndex = currentGameState.currentQuestionIndex + 1;
+
+            if (nextIndex < questions.length) {
+                await setDoc(getGameStateRef(), {
+                    status: 'question',
+                    currentQuestionIndex: nextIndex,
+                    currentQuestion: questions[nextIndex]
+                });
+            } else {
+                await setDoc(getGameStateRef(), { status: 'ended' }, { merge: true });
+                showMessage('Game Over', 'You have reached the end of all questions!');
+            }
+        });
+
+        showResultsBtn.addEventListener('click', async () => {
+            const currentGameState = (await getDoc(getGameStateRef())).data();
+             await setDoc(getGameStateRef(), { ...currentGameState, status: 'results' });
+        });
+        
+        resetGameBtn.addEventListener('click', async () => {
+             await setDoc(getGameStateRef(), { status: 'lobby', currentQuestionIndex: -1, currentQuestion: null });
+             const votesSnapshot = await getDocs(getVotesRef());
+             const batch = writeBatch(db);
+             votesSnapshot.docs.forEach(doc => batch.delete(doc.ref));
+             await batch.commit();
+             showView(adminView);
+        });
+
+        // Player: Submit Vote
+        submitVoteBtn.addEventListener('click', async () => {
+            const selectedName = playerVoteOptions.value;
+            if (selectedName) {
+                const currentGameState = (await getDoc(getGameStateRef())).data();
+                await setDoc(getVoteDocRef(userId), {
+                    voterId: userId,
+                    votedFor: selectedName,
+                    questionId: currentGameState.currentQuestion.id
+                });
+                playerQuestionView.classList.add('hidden');
+                playerVotedView.classList.remove('hidden');
+            } else {
+                showMessage('Selection Required', 'Please select a name to vote.');
+            }
+        });
+
+        // --- INITIALIZATION ---
+        document.addEventListener('DOMContentLoaded', initializeFirebase);
+    </script>
+</body>
+</html>
+
+
+
